@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lecteur Musique - PWA</title>
-    <meta name="description" content="Une PWA de lecture de musique ultra-moderne, sombre et épurée">
+    <title>Lecteur Musique - PWA Premium</title>
+    <meta name="description" content="Une PWA de lecture de musique ultra-moderne avec extraction de métadonnées">
     <meta name="theme-color" content="#0a0a0a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,7 +20,9 @@
                         'dark': '#0a0a0a',
                         'dark-secondary': '#1a1a1a',
                         'dark-tertiary': '#2a2a2a',
-                        'accent': '#ff2d55'
+                        'accent': '#ff2d55',
+                        'accent-pink': '#ff69b4',
+                        'accent-purple': '#a855f7'
                     },
                     fontFamily: {
                         'sans': ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
@@ -36,8 +38,8 @@
     <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <!-- Manifest PWA -->
-    <link rel="manifest" href="data:application/json,{%22name%22:%22Lecteur%20Musique%22,%22short_name%22:%22Musique%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a0a%22,%22theme_color%22:%22%230a0a0a%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20192%20192%27%3E%3Crect%20fill=%27%23ff2d55%27%20width=%27192%27%20height=%27192%27/%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2780%27%20fill=%27white%27%20text-anchor=%27middle%27%20dominant-baseline=%27middle%27%20font-weight=%27bold%27%3E♪%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+    <!-- ID3.js pour lire les métadonnées MP3 -->
+    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.5/dist/jsmediatags.js"></script>
     
     <style>
         * {
@@ -45,29 +47,54 @@
             user-select: none;
         }
         
-        body {
+        html, body {
             background: #0a0a0a;
             color: #ffffff;
             overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         
         .glassmorphism {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .glassmorphism-strong {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #ff2d55 0%, #a855f7 100%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #ff2d55 0%, #ff69b4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         /* Animations cinématiques */
         @keyframes slideInUp {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
             }
             to {
                 opacity: 1;
@@ -76,12 +103,8 @@
         }
         
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
         @keyframes pulse-glow {
@@ -94,31 +117,56 @@
         }
         
         @keyframes rotate-vinyl {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .card-item {
-            animation: slideInUp 0.5s ease-out forwards;
+            animation: slideInUp 0.6s ease-out forwards;
+            opacity: 0;
         }
         
-        .card-item:nth-child(1) { animation-delay: 0.1s; }
-        .card-item:nth-child(2) { animation-delay: 0.2s; }
-        .card-item:nth-child(3) { animation-delay: 0.3s; }
-        .card-item:nth-child(4) { animation-delay: 0.4s; }
-        .card-item:nth-child(n+5) { animation-delay: 0.5s; }
+        .card-item:nth-child(1) { animation-delay: 0.05s; }
+        .card-item:nth-child(2) { animation-delay: 0.1s; }
+        .card-item:nth-child(3) { animation-delay: 0.15s; }
+        .card-item:nth-child(4) { animation-delay: 0.2s; }
+        .card-item:nth-child(n+5) { animation-delay: 0.25s; }
         
         .music-card {
             transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .music-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .music-card:hover::before {
+            left: 100%;
         }
         
         .music-card:hover {
-            transform: translateY(-8px);
-            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-12px) scale(1.02);
+            background: rgba(255, 255, 255, 0.12);
         }
         
         .music-card:active {
@@ -128,6 +176,11 @@
         .fab-button {
             animation: pulse-glow 2s ease-in-out infinite;
             box-shadow: 0 0 30px rgba(255, 45, 85, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .fab-button:hover {
+            transform: scale(1.1);
         }
         
         .fab-button:active {
@@ -136,8 +189,9 @@
         
         .progress-bar {
             background: linear-gradient(90deg, #ff2d55 0%, #ff69b4 100%);
-            height: 3px;
-            border-radius: 3px;
+            height: 4px;
+            border-radius: 2px;
+            box-shadow: 0 0 20px rgba(255, 45, 85, 0.5);
         }
         
         .now-playing {
@@ -150,6 +204,7 @@
             left: 0;
             right: 0;
             animation: slideInUp 0.4s ease-out;
+            z-index: 50;
         }
         
         .search-input {
@@ -174,7 +229,36 @@
             display: none;
         }
         
-        /* Scrollbar personnalisée */
+        .control-btn {
+            transition: all 0.2s ease;
+            border-radius: 50%;
+            padding: 8px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 45, 85, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .control-btn.active {
+            background: rgba(255, 45, 85, 0.4);
+            color: #ff2d55;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #ff2d55;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -192,7 +276,23 @@
             background: rgba(255, 45, 85, 0.8);
         }
         
-        /* Safe areas pour notch iPhone */
+        .album-art {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(135deg, #ff2d55, #a855f7);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            background: rgba(255, 45, 85, 0.2);
+            color: #ff2d55;
+        }
+        
         body {
             padding-top: max(0px, env(safe-area-inset-top));
             padding-bottom: max(0px, env(safe-area-inset-bottom));
@@ -202,13 +302,19 @@
     </style>
 </head>
 <body class="bg-dark text-white font-sans">
-    <div x-data="musicPlayer()" x-init="init()" class="min-h-screen pb-32">
+    <div x-data="musicPlayer()" x-init="init()" class="min-h-screen pb-40">
+        
+        <!-- Gradient Background Animated -->
+        <div class="fixed inset-0 pointer-events-none opacity-30">
+            <div class="absolute top-0 left-0 w-96 h-96 bg-accent rounded-full blur-3xl mix-blend-multiply filter" style="opacity: 0.05;"></div>
+            <div class="absolute top-1/2 right-0 w-96 h-96 bg-accent-purple rounded-full blur-3xl mix-blend-multiply filter" style="opacity: 0.05;"></div>
+        </div>
         
         <!-- Header avec recherche -->
-        <header class="sticky top-0 z-40 pt-4 px-4">
-            <div class="mb-6">
-                <h1 class="text-4xl font-bold mb-2" style="animation: fadeIn 0.6s ease-out;">Musique</h1>
-                <p class="text-sm text-gray-400">Vos morceaux favoris</p>
+        <header class="sticky top-0 z-40 pt-6 px-4 backdrop-blur-sm bg-dark/50 border-b border-white/5">
+            <div class="mb-6" style="animation: slideInDown 0.6s ease-out;">
+                <h1 class="text-5xl font-black gradient-text mb-1">🎵 Musique</h1>
+                <p class="text-sm text-gray-400">Votre bibliothèque personnelle</p>
             </div>
             
             <!-- Barre de recherche -->
@@ -219,61 +325,137 @@
                 <input 
                     type="text" 
                     x-model="searchQuery"
-                    placeholder="Rechercher un morceau..."
-                    class="search-input w-full pl-12 pr-4 py-3 rounded-2xl focus:ring-2 focus:ring-accent"
+                    placeholder="Chercher un artiste, un titre..."
+                    class="search-input w-full pl-12 pr-4 py-3 rounded-2xl focus:ring-2 focus:ring-accent text-sm"
                 >
+            </div>
+            
+            <!-- Stats -->
+            <div class="flex gap-4 mb-6 text-sm">
+                <div class="glassmorphism px-3 py-2 rounded-xl">
+                    <span class="text-gray-400">Titres :</span> <span class="font-bold" x-text="songs.length"></span>
+                </div>
+                <div class="glassmorphism px-3 py-2 rounded-xl">
+                    <span class="text-gray-400">Durée :</span> <span class="font-bold" x-text="totalDuration"></span>
+                </div>
             </div>
         </header>
         
         <!-- Contenu principal -->
-        <main class="px-4 pb-20">
+        <main class="relative px-4 pb-20">
+            <!-- État de chargement -->
+            <div x-show="isScanning" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div class="text-center">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-white font-semibold">Analyse des fichiers MP3...</p>
+                    <p class="text-gray-400 text-sm mt-2" x-text="scanProgress"></p>
+                </div>
+            </div>
+            
+            <!-- Filtres -->
+            <div x-show="songs.length > 0" class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                <button 
+                    @click="sortBy = 'date'; sortAscending = false"
+                    :class="sortBy === 'date' ? 'bg-accent text-white' : 'glassmorphism text-gray-300'"
+                    class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                >
+                    Récents
+                </button>
+                <button 
+                    @click="sortBy = 'name'; sortAscending = true"
+                    :class="sortBy === 'name' ? 'bg-accent text-white' : 'glassmorphism text-gray-300'"
+                    class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                >
+                    A-Z
+                </button>
+                <button 
+                    @click="sortBy = 'artist'; sortAscending = true"
+                    :class="sortBy === 'artist' ? 'bg-accent text-white' : 'glassmorphism text-gray-300'"
+                    class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                >
+                    Artiste
+                </button>
+                <button 
+                    @click="sortBy = 'duration'; sortAscending = false"
+                    :class="sortBy === 'duration' ? 'bg-accent text-white' : 'glassmorphism text-gray-300'"
+                    class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                >
+                    Durée
+                </button>
+            </div>
+            
             <!-- Grille de musiques -->
-            <div class="grid grid-cols-2 gap-4 mb-8">
-                <template x-for="song in filteredSongs" :key="song.id">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                <template x-for="song in sortedAndFilteredSongs" :key="song.id">
                     <div 
-                        class="card-item music-card glassmorphism p-4 rounded-3xl cursor-pointer group"
+                        class="card-item music-card glassmorphism p-3 rounded-2xl cursor-pointer group"
                         @click="playSong(song)"
                     >
-                        <div class="relative mb-3 aspect-square rounded-2xl bg-dark-tertiary overflow-hidden">
-                            <!-- Icône musicale avec animation -->
-                            <div class="absolute inset-0 flex items-center justify-center">
+                        <!-- Album Art -->
+                        <div class="relative mb-3 aspect-square rounded-xl bg-gradient-to-br from-accent to-accent-purple overflow-hidden">
+                            <img 
+                                v-if="song.albumArt"
+                                :src="song.albumArt"
+                                :alt="song.title"
+                                class="album-art"
+                            >
+                            <div v-else class="absolute inset-0 flex items-center justify-center">
                                 <div 
                                     :class="currentSong?.id === song.id && isPlaying ? 'now-playing' : ''"
-                                    class="text-4xl opacity-60 group-hover:opacity-100 transition-opacity"
+                                    class="text-5xl opacity-70 group-hover:opacity-100 transition-opacity"
                                 >
                                     ♪
                                 </div>
                             </div>
-                            <!-- Overlay au survol -->
-                            <div class="absolute inset-0 bg-accent opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            
+                            <!-- Now Playing Badge -->
+                            <div v-if="currentSong?.id === song.id" class="absolute top-2 right-2 bg-accent px-2 py-1 rounded-full text-xs font-bold">
+                                EN LECTURE
+                            </div>
+                            
+                            <!-- Overlay -->
+                            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-40 transition-opacity flex items-center justify-center">
+                                <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <h3 class="text-sm font-semibold truncate" x-text="song.name"></h3>
-                        <p class="text-xs text-gray-400 truncate" x-text="song.duration"></p>
+                        
+                        <!-- Info -->
+                        <h3 class="text-xs font-bold truncate leading-tight" x-text="song.title || song.name"></h3>
+                        <p class="text-xs text-gray-400 truncate" x-text="song.artist || 'Artiste inconnu'"></p>
+                        <p class="text-xs text-gray-500 mt-1" x-text="song.duration"></p>
                     </div>
                 </template>
             </div>
             
             <!-- Message vide -->
-            <div x-show="songs.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                <div class="text-5xl mb-4">🎵</div>
-                <p class="text-gray-400 mb-2">Aucun morceau pour le moment</p>
-                <p class="text-xs text-gray-500">Appuyez sur + pour importer des fichiers MP3</p>
+            <div x-show="songs.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+                <div class="text-7xl mb-6">🎧</div>
+                <p class="text-2xl font-bold mb-2">Pas de musique encore</p>
+                <p class="text-gray-400 mb-6">Commencez par importer vos fichiers MP3</p>
+                <button 
+                    @click="document.getElementById('fileInput').click()"
+                    class="bg-accent hover:bg-opacity-90 px-6 py-3 rounded-full font-semibold transition-all"
+                >
+                    + Importer des fichiers
+                </button>
             </div>
             
             <!-- Message résultat recherche -->
-            <div x-show="songs.length > 0 && filteredSongs.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                <p class="text-gray-400">Aucun résultat pour "<span x-text="searchQuery"></span>"</p>
+            <div x-show="songs.length > 0 && sortedAndFilteredSongs.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+                <div class="text-5xl mb-4">🔍</div>
+                <p class="text-gray-400">Aucun résultat pour "<span class="font-bold" x-text="searchQuery"></span>"</p>
             </div>
         </main>
         
         <!-- Bouton d'action flottant (+) -->
         <button 
             @click="document.getElementById('fileInput').click()"
-            class="fab-button fixed bottom-24 right-6 z-30 w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-            style="box-shadow: 0 8px 30px rgba(255, 45, 85, 0.4);"
+            class="fab-button fixed bottom-32 right-6 z-30 w-16 h-16 rounded-full bg-accent flex items-center justify-center shadow-lg transition-all"
         >
-            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
             </svg>
         </button>
         
@@ -289,31 +471,47 @@
         <!-- Lecteur audio flottant -->
         <div 
             x-show="currentSong"
-            class="player-floating glassmorphism-strong border-t border-gray-700"
-            style="bottom: 0; backdrop-filter: blur(20px);"
+            class="player-floating glassmorphism-strong border-t border-white/10"
         >
             <!-- Barre de progression -->
-            <div class="w-full h-1 bg-dark-tertiary">
+            <div class="w-full h-1 bg-dark-tertiary cursor-pointer" @click="seekAudio">
                 <div 
                     class="progress-bar h-full transition-all duration-100"
-                    :style="`width: ${(currentTime / duration) * 100}%`"
-                    @click="seekAudio"
+                    :style="`width: ${duration > 0 ? (currentTime / duration) * 100 : 0}%`"
                 ></div>
             </div>
             
             <!-- Contenu du lecteur -->
             <div class="p-4">
                 <!-- Info du morceau -->
-                <div class="mb-3">
-                    <h3 class="text-sm font-semibold truncate" x-text="currentSong?.name"></h3>
-                    <p class="text-xs text-gray-400" x-text="formatTime(currentTime) + ' / ' + currentSong?.duration"></p>
+                <div class="mb-4 flex items-start gap-3">
+                    <div v-if="currentSong?.albumArt" class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                        <img :src="currentSong.albumArt" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-sm font-bold truncate" x-text="currentSong?.title || currentSong?.name"></h3>
+                        <p class="text-xs text-gray-400 truncate" x-text="currentSong?.artist || 'Artiste inconnu'"></p>
+                        <p class="text-xs text-gray-500 mt-0.5" x-text="formatTime(currentTime) + ' / ' + (currentSong?.duration || '0:00')"></p>
+                    </div>
                 </div>
                 
                 <!-- Contrôles -->
-                <div class="flex items-center justify-center gap-6">
+                <div class="flex items-center justify-between gap-3">
+                    <!-- Shuffle -->
+                    <button 
+                        @click="toggleShuffle()"
+                        :class="isShuffle ? 'active' : ''"
+                        class="control-btn"
+                        title="Lecture aléatoire"
+                    >
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10.59 9.38L6.5 5.29A1 1 0 105.08 6.71l4.09-4.09 4.09 4.09a1 1 0 11-1.41 1.41L10.59 9.38zM17.5 13a1 1 0 011 1v3.59l1.29-1.3a1 1 0 111.42 1.41l-3 3a1 1 0 01-1.42 0l-3-3a1 1 0 111.42-1.41L17.5 17.59V14a1 1 0 011-1z"></path>
+                        </svg>
+                    </button>
+                    
                     <!-- Précédent -->
-                    <button @click="previousSong()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <button @click="previousSong()" class="control-btn" title="Précédent">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M6 4h4v16H6V4zm8 0h2v16h-2V4zm2 4l8 6-8 6V8z"></path>
                         </svg>
                     </button>
@@ -321,21 +519,39 @@
                     <!-- Play/Pause -->
                     <button 
                         @click="togglePlayPause()" 
-                        class="w-12 h-12 bg-accent rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all active:scale-95"
+                        class="w-14 h-14 bg-gradient-to-br from-accent to-accent-pink rounded-full flex items-center justify-center hover:shadow-lg transition-all active:scale-95 flex-shrink-0"
                     >
-                        <svg x-show="isPlaying" class="w-6 h-6" fill="white" viewBox="0 0 24 24">
+                        <svg x-show="isPlaying" class="w-6 h-6 text-white" fill="white" viewBox="0 0 24 24">
                             <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"></path>
                         </svg>
-                        <svg x-show="!isPlaying" class="w-6 h-6" fill="white" viewBox="0 0 24 24">
+                        <svg x-show="!isPlaying" class="w-6 h-6 text-white" fill="white" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z"></path>
                         </svg>
                     </button>
                     
                     <!-- Suivant -->
-                    <button @click="nextSong()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <button @click="nextSong()" class="control-btn" title="Suivant">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M14 4v16h-4V4h4zM4 4h2v16H4V4zm16 0l-8 6v4l8 6V4z"></path>
                         </svg>
+                    </button>
+                    
+                    <!-- Repeat -->
+                    <button 
+                        @click="toggleRepeat()"
+                        :class="repeatMode !== 'none' ? 'active' : ''"
+                        class="control-btn"
+                        :title="repeatMode === 'none' ? 'Aucune répétition' : repeatMode === 'one' ? 'Répéter ce morceau' : 'Répéter la playlist'"
+                    >
+                        <div class="relative">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path>
+                            </svg>
+                            <span 
+                                v-if="repeatMode === 'one'"
+                                class="absolute -bottom-1 -right-1 w-3 h-3 bg-accent rounded-full text-white text-xs flex items-center justify-center"
+                            >1</span>
+                        </div>
                     </button>
                 </div>
             </div>
@@ -344,7 +560,7 @@
         <!-- Élément audio caché -->
         <audio 
             id="audioPlayer"
-            @ended="nextSong()"
+            @ended="handleSongEnd()"
             @timeupdate="updateCurrentTime()"
             @loadedmetadata="updateDuration()"
         ></audio>
@@ -355,15 +571,60 @@
             return {
                 songs: [],
                 currentSong: null,
+                currentSongIndex: 0,
                 isPlaying: false,
                 currentTime: 0,
                 duration: 0,
                 searchQuery: '',
+                isScanning: false,
+                scanProgress: '',
+                sortBy: 'date',
+                sortAscending: false,
+                isShuffle: false,
+                repeatMode: 'none', // 'none', 'one', 'all'
                 
                 get filteredSongs() {
-                    return this.songs.filter(song => 
-                        song.name.toLowerCase().includes(this.searchQuery.toLowerCase())
-                    );
+                    const query = this.searchQuery.toLowerCase();
+                    return this.songs.filter(song => {
+                        const title = (song.title || song.name || '').toLowerCase();
+                        const artist = (song.artist || '').toLowerCase();
+                        const album = (song.album || '').toLowerCase();
+                        return title.includes(query) || artist.includes(query) || album.includes(query);
+                    });
+                },
+                
+                get sortedAndFilteredSongs() {
+                    let sorted = [...this.filteredSongs];
+                    
+                    switch(this.sortBy) {
+                        case 'name':
+                            sorted.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
+                            break;
+                        case 'artist':
+                            sorted.sort((a, b) => (a.artist || 'Z').localeCompare(b.artist || 'Z'));
+                            break;
+                        case 'duration':
+                            sorted.sort((a, b) => {
+                                const aDur = this.parseDuration(a.duration);
+                                const bDur = this.parseDuration(b.duration);
+                                return bDur - aDur;
+                            });
+                            break;
+                        case 'date':
+                        default:
+                            sorted.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+                    }
+                    
+                    if (this.sortAscending && this.sortBy !== 'date') sorted.reverse();
+                    return sorted;
+                },
+                
+                get totalDuration() {
+                    const total = this.songs.reduce((sum, song) => sum + this.parseDuration(song.duration), 0);
+                    const hours = Math.floor(total / 3600);
+                    const mins = Math.floor((total % 3600) / 60);
+                    if (hours > 0) return `${hours}h ${mins}m`;
+                    return `${mins}m`;
                 },
                 
                 init() {
@@ -373,36 +634,92 @@
                 
                 async handleFileImport(event) {
                     const files = Array.from(event.target.files);
+                    this.isScanning = true;
                     
-                    for (const file of files) {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        this.scanProgress = `${i + 1}/${files.length} - Traitement de ${file.name}...`;
+                        
+                        await this.extractMetadata(file);
+                    }
+                    
+                    this.isScanning = false;
+                    this.scanProgress = '';
+                    event.target.value = '';
+                },
+                
+                extractMetadata(file) {
+                    return new Promise((resolve) => {
                         const url = URL.createObjectURL(file);
+                        
+                        // Essayer de lire les tags ID3
+                        if (typeof jsmediatags !== 'undefined') {
+                            jsmediatags.read(file, {
+                                onSuccess: (tag) => {
+                                    const tags = tag.tags;
+                                    const song = {
+                                        id: Date.now() + Math.random(),
+                                        name: file.name.replace('.mp3', ''),
+                                        title: tags.title || file.name.replace('.mp3', ''),
+                                        artist: tags.artist || 'Artiste inconnu',
+                                        album: tags.album || 'Album inconnu',
+                                        duration: '0:00',
+                                        url: url,
+                                        addedAt: new Date().toISOString(),
+                                        albumArt: null
+                                    };
+                                    
+                                    // Extraire la pochette d'album
+                                    if (tags.picture) {
+                                        const pic = tags.picture;
+                                        const blob = new Blob([new Uint8Array(pic.data)], { type: pic.format });
+                                        song.albumArt = URL.createObjectURL(blob);
+                                    }
+                                    
+                                    // Obtenir la durée
+                                    const audio = new Audio();
+                                    audio.onloadedmetadata = () => {
+                                        song.duration = this.formatTime(audio.duration);
+                                        this.songs.unshift(song);
+                                        this.saveSongsToStorage();
+                                        resolve();
+                                    };
+                                    audio.src = url;
+                                },
+                                onError: () => {
+                                    this.createSongWithoutMetadata(file, url).then(resolve);
+                                }
+                            });
+                        } else {
+                            this.createSongWithoutMetadata(file, url).then(resolve);
+                        }
+                    });
+                },
+                
+                async createSongWithoutMetadata(file, url) {
+                    return new Promise((resolve) => {
                         const audio = new Audio();
                         
                         audio.onloadedmetadata = () => {
                             const song = {
                                 id: Date.now() + Math.random(),
                                 name: file.name.replace('.mp3', ''),
-                                url: url,
+                                title: file.name.replace('.mp3', ''),
+                                artist: 'Artiste inconnu',
+                                album: 'Album inconnu',
                                 duration: this.formatTime(audio.duration),
-                                addedAt: new Date().toISOString()
+                                url: url,
+                                addedAt: new Date().toISOString(),
+                                albumArt: null
                             };
                             
                             this.songs.unshift(song);
                             this.saveSongsToStorage();
-                            
-                            // Animation
-                            Alpine.nextTick(() => {
-                                this.$el.querySelectorAll('.card-item').forEach(el => {
-                                    el.style.animation = 'slideInUp 0.5s ease-out';
-                                });
-                            });
+                            resolve();
                         };
                         
                         audio.src = url;
-                    }
-                    
-                    // Reset input
-                    event.target.value = '';
+                    });
                 },
                 
                 playSong(song) {
@@ -414,6 +731,7 @@
                     }
                     
                     this.currentSong = song;
+                    this.currentSongIndex = this.sortedAndFilteredSongs.findIndex(s => s.id === song.id);
                     audio.src = song.url;
                     audio.play();
                     this.isPlaying = true;
@@ -432,21 +750,49 @@
                 },
                 
                 nextSong() {
-                    if (!this.currentSong) return;
+                    if (!this.currentSong || this.sortedAndFilteredSongs.length === 0) return;
                     
-                    const currentIndex = this.songs.findIndex(s => s.id === this.currentSong.id);
-                    const nextIndex = (currentIndex + 1) % this.songs.length;
+                    let nextIndex;
+                    if (this.isShuffle) {
+                        nextIndex = Math.floor(Math.random() * this.sortedAndFilteredSongs.length);
+                    } else {
+                        nextIndex = (this.currentSongIndex + 1) % this.sortedAndFilteredSongs.length;
+                    }
                     
-                    this.playSong(this.songs[nextIndex]);
+                    this.playSong(this.sortedAndFilteredSongs[nextIndex]);
                 },
                 
                 previousSong() {
-                    if (!this.currentSong) return;
+                    if (!this.currentSong || this.sortedAndFilteredSongs.length === 0) return;
                     
-                    const currentIndex = this.songs.findIndex(s => s.id === this.currentSong.id);
-                    const prevIndex = currentIndex === 0 ? this.songs.length - 1 : currentIndex - 1;
-                    
-                    this.playSong(this.songs[prevIndex]);
+                    const prevIndex = this.currentSongIndex === 0 ? this.sortedAndFilteredSongs.length - 1 : this.currentSongIndex - 1;
+                    this.playSong(this.sortedAndFilteredSongs[prevIndex]);
+                },
+                
+                handleSongEnd() {
+                    if (this.repeatMode === 'one') {
+                        const audio = document.getElementById('audioPlayer');
+                        audio.currentTime = 0;
+                        audio.play();
+                    } else if (this.repeatMode === 'all') {
+                        this.nextSong();
+                    } else {
+                        if (this.currentSongIndex < this.sortedAndFilteredSongs.length - 1) {
+                            this.nextSong();
+                        } else {
+                            this.isPlaying = false;
+                        }
+                    }
+                },
+                
+                toggleShuffle() {
+                    this.isShuffle = !this.isShuffle;
+                },
+                
+                toggleRepeat() {
+                    const modes = ['none', 'one', 'all'];
+                    const currentIndex = modes.indexOf(this.repeatMode);
+                    this.repeatMode = modes[(currentIndex + 1) % modes.length];
                 },
                 
                 seekAudio(event) {
@@ -476,12 +822,21 @@
                     return `${mins}:${secs.toString().padStart(2, '0')}`;
                 },
                 
+                parseDuration(timeStr) {
+                    const parts = timeStr.split(':').map(Number);
+                    return parts[0] * 60 + (parts[1] || 0);
+                },
+                
                 saveSongsToStorage() {
                     const songsData = this.songs.map(song => ({
                         id: song.id,
                         name: song.name,
+                        title: song.title,
+                        artist: song.artist,
+                        album: song.album,
                         duration: song.duration,
-                        addedAt: song.addedAt
+                        addedAt: song.addedAt,
+                        albumArt: song.albumArt
                     }));
                     
                     localStorage.setItem('musicLibrary', JSON.stringify(songsData));
