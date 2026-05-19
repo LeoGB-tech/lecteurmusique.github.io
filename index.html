@@ -3,24 +3,516 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Lecteur Musique</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Lecteur Musique - PWA</title>
+    <meta name="description" content="Une PWA de lecture de musique ultra-moderne, sombre et épurée">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lecteur Musique">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark': '#0a0a0a',
+                        'dark-secondary': '#1a1a1a',
+                        'dark-tertiary': '#2a2a2a',
+                        'accent': '#ff2d55'
+                    },
+                    fontFamily: {
+                        'sans': ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        '3xl': '1.875rem',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Manifest PWA -->
+    <link rel="manifest" href="data:application/json,{%22name%22:%22Lecteur%20Musique%22,%22short_name%22:%22Musique%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a0a%22,%22theme_color%22:%22%230a0a0a%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20192%20192%27%3E%3Crect%20fill=%27%23ff2d55%27%20width=%27192%27%20height=%27192%27/%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2780%27%20fill=%27white%27%20text-anchor=%27middle%27%20dominant-baseline=%27middle%27%20font-weight=%27bold%27%3E♪%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+    
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        #audio-list { margin-top: 20px; }
-        .track { background: white; padding: 10px; margin: 5px 0; border-radius: 8px; cursor: pointer; }
+        * {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glassmorphism-strong {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Animations cinématiques */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 45, 85, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 45, 85, 0.5);
+            }
+        }
+        
+        @keyframes rotate-vinyl {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .card-item {
+            animation: slideInUp 0.5s ease-out forwards;
+        }
+        
+        .card-item:nth-child(1) { animation-delay: 0.1s; }
+        .card-item:nth-child(2) { animation-delay: 0.2s; }
+        .card-item:nth-child(3) { animation-delay: 0.3s; }
+        .card-item:nth-child(4) { animation-delay: 0.4s; }
+        .card-item:nth-child(n+5) { animation-delay: 0.5s; }
+        
+        .music-card {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .music-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .music-card:active {
+            transform: scale(0.95);
+        }
+        
+        .fab-button {
+            animation: pulse-glow 2s ease-in-out infinite;
+            box-shadow: 0 0 30px rgba(255, 45, 85, 0.4);
+        }
+        
+        .fab-button:active {
+            transform: scale(0.9);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #ff2d55 0%, #ff69b4 100%);
+            height: 3px;
+            border-radius: 3px;
+        }
+        
+        .now-playing {
+            animation: rotate-vinyl 3s linear infinite;
+        }
+        
+        .player-floating {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            animation: slideInUp 0.4s ease-out;
+        }
+        
+        .search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 45, 85, 0.5);
+            outline: none;
+            box-shadow: 0 0 20px rgba(255, 45, 85, 0.2);
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        /* Scrollbar personnalisée */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 45, 85, 0.5);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 45, 85, 0.8);
+        }
+        
+        /* Safe areas pour notch iPhone */
+        body {
+            padding-top: max(0px, env(safe-area-inset-top));
+            padding-bottom: max(0px, env(safe-area-inset-bottom));
+            padding-left: max(0px, env(safe-area-inset-left));
+            padding-right: max(0px, env(safe-area-inset-right));
+        }
     </style>
 </head>
-<body>
-    <h1>Ma Bibliothèque</h1>
-    <input type="file" id="fileInput" accept="audio/mp3" multiple>
-    <div id="audio-list"></div>
-    <audio id="audioPlayer" controls style="width:100%; margin-top: 20px;"></audio>
-
-    <script src="app.js"></script>
+<body class="bg-dark text-white font-sans">
+    <div x-data="musicPlayer()" x-init="init()" class="min-h-screen pb-32">
+        
+        <!-- Header avec recherche -->
+        <header class="sticky top-0 z-40 pt-4 px-4">
+            <div class="mb-6">
+                <h1 class="text-4xl font-bold mb-2" style="animation: fadeIn 0.6s ease-out;">Musique</h1>
+                <p class="text-sm text-gray-400">Vos morceaux favoris</p>
+            </div>
+            
+            <!-- Barre de recherche -->
+            <div class="relative mb-6">
+                <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input 
+                    type="text" 
+                    x-model="searchQuery"
+                    placeholder="Rechercher un morceau..."
+                    class="search-input w-full pl-12 pr-4 py-3 rounded-2xl focus:ring-2 focus:ring-accent"
+                >
+            </div>
+        </header>
+        
+        <!-- Contenu principal -->
+        <main class="px-4 pb-20">
+            <!-- Grille de musiques -->
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <template x-for="song in filteredSongs" :key="song.id">
+                    <div 
+                        class="card-item music-card glassmorphism p-4 rounded-3xl cursor-pointer group"
+                        @click="playSong(song)"
+                    >
+                        <div class="relative mb-3 aspect-square rounded-2xl bg-dark-tertiary overflow-hidden">
+                            <!-- Icône musicale avec animation -->
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div 
+                                    :class="currentSong?.id === song.id && isPlaying ? 'now-playing' : ''"
+                                    class="text-4xl opacity-60 group-hover:opacity-100 transition-opacity"
+                                >
+                                    ♪
+                                </div>
+                            </div>
+                            <!-- Overlay au survol -->
+                            <div class="absolute inset-0 bg-accent opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                        </div>
+                        <h3 class="text-sm font-semibold truncate" x-text="song.name"></h3>
+                        <p class="text-xs text-gray-400 truncate" x-text="song.duration"></p>
+                    </div>
+                </template>
+            </div>
+            
+            <!-- Message vide -->
+            <div x-show="songs.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+                <div class="text-5xl mb-4">🎵</div>
+                <p class="text-gray-400 mb-2">Aucun morceau pour le moment</p>
+                <p class="text-xs text-gray-500">Appuyez sur + pour importer des fichiers MP3</p>
+            </div>
+            
+            <!-- Message résultat recherche -->
+            <div x-show="songs.length > 0 && filteredSongs.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+                <p class="text-gray-400">Aucun résultat pour "<span x-text="searchQuery"></span>"</p>
+            </div>
+        </main>
+        
+        <!-- Bouton d'action flottant (+) -->
+        <button 
+            @click="document.getElementById('fileInput').click()"
+            class="fab-button fixed bottom-24 right-6 z-30 w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            style="box-shadow: 0 8px 30px rgba(255, 45, 85, 0.4);"
+        >
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+        </button>
+        
+        <!-- Input file caché -->
+        <input 
+            type="file" 
+            id="fileInput" 
+            accept="audio/mpeg,audio/mp3"
+            multiple
+            @change="handleFileImport"
+        >
+        
+        <!-- Lecteur audio flottant -->
+        <div 
+            x-show="currentSong"
+            class="player-floating glassmorphism-strong border-t border-gray-700"
+            style="bottom: 0; backdrop-filter: blur(20px);"
+        >
+            <!-- Barre de progression -->
+            <div class="w-full h-1 bg-dark-tertiary">
+                <div 
+                    class="progress-bar h-full transition-all duration-100"
+                    :style="`width: ${(currentTime / duration) * 100}%`"
+                    @click="seekAudio"
+                ></div>
+            </div>
+            
+            <!-- Contenu du lecteur -->
+            <div class="p-4">
+                <!-- Info du morceau -->
+                <div class="mb-3">
+                    <h3 class="text-sm font-semibold truncate" x-text="currentSong?.name"></h3>
+                    <p class="text-xs text-gray-400" x-text="formatTime(currentTime) + ' / ' + currentSong?.duration"></p>
+                </div>
+                
+                <!-- Contrôles -->
+                <div class="flex items-center justify-center gap-6">
+                    <!-- Précédent -->
+                    <button @click="previousSong()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 4h4v16H6V4zm8 0h2v16h-2V4zm2 4l8 6-8 6V8z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Play/Pause -->
+                    <button 
+                        @click="togglePlayPause()" 
+                        class="w-12 h-12 bg-accent rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all active:scale-95"
+                    >
+                        <svg x-show="isPlaying" class="w-6 h-6" fill="white" viewBox="0 0 24 24">
+                            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"></path>
+                        </svg>
+                        <svg x-show="!isPlaying" class="w-6 h-6" fill="white" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Suivant -->
+                    <button @click="nextSong()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14 4v16h-4V4h4zM4 4h2v16H4V4zm16 0l-8 6v4l8 6V4z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Élément audio caché -->
+        <audio 
+            id="audioPlayer"
+            @ended="nextSong()"
+            @timeupdate="updateCurrentTime()"
+            @loadedmetadata="updateDuration()"
+        ></audio>
+    </div>
+    
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js');
+        function musicPlayer() {
+            return {
+                songs: [],
+                currentSong: null,
+                isPlaying: false,
+                currentTime: 0,
+                duration: 0,
+                searchQuery: '',
+                
+                get filteredSongs() {
+                    return this.songs.filter(song => 
+                        song.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                    );
+                },
+                
+                init() {
+                    this.loadSongsFromStorage();
+                    this.registerServiceWorker();
+                },
+                
+                async handleFileImport(event) {
+                    const files = Array.from(event.target.files);
+                    
+                    for (const file of files) {
+                        const url = URL.createObjectURL(file);
+                        const audio = new Audio();
+                        
+                        audio.onloadedmetadata = () => {
+                            const song = {
+                                id: Date.now() + Math.random(),
+                                name: file.name.replace('.mp3', ''),
+                                url: url,
+                                duration: this.formatTime(audio.duration),
+                                addedAt: new Date().toISOString()
+                            };
+                            
+                            this.songs.unshift(song);
+                            this.saveSongsToStorage();
+                            
+                            // Animation
+                            Alpine.nextTick(() => {
+                                this.$el.querySelectorAll('.card-item').forEach(el => {
+                                    el.style.animation = 'slideInUp 0.5s ease-out';
+                                });
+                            });
+                        };
+                        
+                        audio.src = url;
+                    }
+                    
+                    // Reset input
+                    event.target.value = '';
+                },
+                
+                playSong(song) {
+                    const audio = document.getElementById('audioPlayer');
+                    
+                    if (this.currentSong?.id === song.id) {
+                        this.togglePlayPause();
+                        return;
+                    }
+                    
+                    this.currentSong = song;
+                    audio.src = song.url;
+                    audio.play();
+                    this.isPlaying = true;
+                },
+                
+                togglePlayPause() {
+                    const audio = document.getElementById('audioPlayer');
+                    
+                    if (this.isPlaying) {
+                        audio.pause();
+                        this.isPlaying = false;
+                    } else {
+                        audio.play();
+                        this.isPlaying = true;
+                    }
+                },
+                
+                nextSong() {
+                    if (!this.currentSong) return;
+                    
+                    const currentIndex = this.songs.findIndex(s => s.id === this.currentSong.id);
+                    const nextIndex = (currentIndex + 1) % this.songs.length;
+                    
+                    this.playSong(this.songs[nextIndex]);
+                },
+                
+                previousSong() {
+                    if (!this.currentSong) return;
+                    
+                    const currentIndex = this.songs.findIndex(s => s.id === this.currentSong.id);
+                    const prevIndex = currentIndex === 0 ? this.songs.length - 1 : currentIndex - 1;
+                    
+                    this.playSong(this.songs[prevIndex]);
+                },
+                
+                seekAudio(event) {
+                    const audio = document.getElementById('audioPlayer');
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const percent = (event.clientX - rect.left) / rect.width;
+                    
+                    audio.currentTime = percent * this.duration;
+                },
+                
+                updateCurrentTime() {
+                    const audio = document.getElementById('audioPlayer');
+                    this.currentTime = audio.currentTime;
+                },
+                
+                updateDuration() {
+                    const audio = document.getElementById('audioPlayer');
+                    this.duration = audio.duration;
+                },
+                
+                formatTime(seconds) {
+                    if (!seconds || isNaN(seconds)) return '0:00';
+                    
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                },
+                
+                saveSongsToStorage() {
+                    const songsData = this.songs.map(song => ({
+                        id: song.id,
+                        name: song.name,
+                        duration: song.duration,
+                        addedAt: song.addedAt
+                    }));
+                    
+                    localStorage.setItem('musicLibrary', JSON.stringify(songsData));
+                },
+                
+                loadSongsFromStorage() {
+                    const stored = localStorage.getItem('musicLibrary');
+                    
+                    if (stored) {
+                        const songsData = JSON.parse(stored);
+                        this.songs = songsData.map(song => ({
+                            ...song,
+                            url: URL.createObjectURL(new Blob([''], { type: 'audio/mpeg' }))
+                        }));
+                    }
+                },
+                
+                registerServiceWorker() {
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('data:application/javascript,' + encodeURIComponent(`
+                            self.addEventListener('install', event => {
+                                self.skipWaiting();
+                            });
+                            
+                            self.addEventListener('activate', event => {
+                                event.waitUntil(clients.claim());
+                            });
+                        `)).catch(() => {});
+                    }
+                }
+            };
         }
     </script>
 </body>
